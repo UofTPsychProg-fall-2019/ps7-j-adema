@@ -1,0 +1,60 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2511
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fnil\fcharset0 Menlo-Regular;\f1\fnil\fcharset0 Monaco;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+{\*\listtable{\list\listtemplateid1\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid1\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{hyphen\}}{\leveltext\leveltemplateid2\'01\uc0\u8259 ;}{\levelnumbers;}\fi-360\li1440\lin1440 }{\listname ;}\listid1}}
+{\*\listoverridetable{\listoverride\listid1\listoverridecount0\ls1}}
+\margl1440\margr1440\vieww12880\viewh11520\viewkind0
+\pard\tx220\tx720\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li720\fi-720\pardirnatural\partightenfactor0
+\ls1\ilvl0
+\f0\fs24 \cf0 {\listtext	\uc0\u8226 	}The raw data from my experiment is saved in the form of a .csv file for each participant. The independent variables are preview type, and scene category. The dependent variable is response time (RT). Summary measures to be calculated are accuracy, and median response time. The experiment that applies to this R script is a within-subjects design.\
+{\listtext	\uc0\u8226 	}I have already started my analysis, so the pseudocode below is a summary of what I have in my current R script.\
+\pard\tx940\tx1440\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\li1440\fi-1440\pardirnatural\partightenfactor0
+\ls1\ilvl1\cf0 {\listtext	
+\f1 \uc0\u8259 
+\f0 	}I don\'92t intend to recode any variables or deal with any outliers. My strict exclusion criteria should account for any responses that are made too hastily and carelessly, and my cutoff of 10 seconds for the search task should prevent very slow responders from skewing the data. In any case, the within-subjects design decreases the effects of single outliers on the rest of the data. \
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+\cf0 \
+Pseudocode (I will use an \'91R project\'92 to keep working directory and file-calling simple):\
+\
+##Libraries\'85 plyr, tidyverse, lme4, ggeffects, lmerTest, Hmisc, rstanarm\
+# Note that I intend to use rstanarm, but it has a lot of trouble compiling properly on macOS Catalina. Therefore, I have not included it in the pseudocode below, but if I can get it to work, I would use it similarly to how I use lmer().\
+\
+##Read-in\'85\
+ - list files\
+ - create a dataframe with all the data using do.call\
+ - remove files list with rm() to decrease clutter\
+\
+##Remove RTs >10s (they aren\'92t incorrect and are not counted in the accuracy measure)\
+\
+##Exclusion\'85 if accuracy < 85%, exclude\
+# note that \'91acc\'92 is in the raw data, where an incorrect response on a trial =0, and a correct response =1. I know I could recode this into character strings, but I don\'92t intend to.\
+ - group by participant %>% mutate count %>% summarize (accuracy = sum(acc)/first(count))\
+ - currently, I go through that summary just calculated and manually exclude participants using %>%filter, but I would like to figure out a more automated way to do this.\
+\
+##Wrangling\
+# I may or may not use RT bins. If I do, this is what I would code:\
+tags <- c(1, 2,3, 4)\
+df <- df%>% mutate(rt_bins=case_when(\
+  trials.thisN <=45 ~ tags[1],\
+  trials.thisN>45 &  trials.thisN <=90 ~ tags[2],\
+  trials.thisN >90 &  trials.thisN <=135 ~ tags[3],\
+  trials.thisN >135 &  trials.thisN <=180 ~ tags[4]\
+))\
+# since I will be looking at \'91correct\'92 trials only, I will apply a filter to use only rows where \'91acc\'92=1\
+\
+##Analysis\
+M1<- lmer(log(rt)~trials.thisTrialN*prev_type+(1|Participant),data=df)\
+summary(M1)\
+plot(ggpredict(M1, terms=c('trials.thisTrialN','prev_type')))\
+	# linear mixed effects regression, where rt (log-transformed to account for skewness) 	is a factor of trial number*preview type, for each individual participant.\
+	# summary() will show me the results in the console. \
+	# plot() will give me a visualization of the predictions of the model.\
+\
+# I may use other versions of lmer to see the effects of other factors, such as the images themselves:\
+M2 <- lmer(log(rt)~rt_bins*prev_type+(1|Participant)+(1|img),data=df)\
+summary(M2)\
+plot(ggpredict(M2,terms=c('rt_bins','prev_type')),connect.lines=TRUE)\
+\
+\
+}
